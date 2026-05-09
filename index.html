@@ -6,6 +6,7 @@
 <title>FitPro — Treino & Nutrição</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#0c0c0f;--bg2:#131318;--bg3:#1a1a22;--bg4:#22222e;--bg5:#2a2a38;
@@ -358,28 +359,106 @@ select option{background:var(--bg3);}
 /* SCROLL X */
 .scroll-x{display:flex;gap:9px;overflow-x:auto;margin:0 -14px;padding:0 14px 4px;scrollbar-width:none;}
 .scroll-x::-webkit-scrollbar{display:none;}
+
+/* ── AUTH SCREEN ── */
+.auth-screen{
+  position:fixed;inset:0;z-index:500;
+  background:radial-gradient(ellipse at 60% 20%, rgba(197,241,53,.04) 0%, transparent 60%), var(--bg);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  max-width:430px;margin:0 auto;padding:32px 24px;
+}
+.auth-screen.open{display:flex;}
+.auth-screen .ps-logo{font-size:2.8rem;margin-bottom:4px;}
+.auth-screen .ps-tagline{margin-bottom:32px;}
+.auth-form{width:100%;max-width:340px;}
+.auth-form .field{margin-bottom:14px;}
+.auth-form .btn-full{margin-bottom:8px;}
+.auth-switch{font-size:.78rem;color:var(--text2);text-align:center;margin-top:12px;}
+.auth-switch a{color:var(--lime);cursor:pointer;text-decoration:none;font-weight:500;}
+.auth-switch a:hover{text-decoration:underline;}
+.auth-error{font-size:.78rem;color:var(--red);text-align:center;margin-bottom:10px;display:none;}
+.auth-loading{display:none;text-align:center;padding:20px;}
+.auth-loading.on{display:block;}
+.auth-spinner{width:28px;height:28px;border:3px solid var(--bg4);border-top-color:var(--lime);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.auth-avatar{margin-bottom:12px;}
+.auth-email{font-size:.82rem;color:var(--text2);margin-bottom:16px;text-align:center;}
 </style>
 </head>
 <body>
 
-<!-- ═══ PROFILE SWITCHER ═══ -->
-<div class="ps-screen" id="psScreen">
-  <div class="ps-logo">Fit<b>Pro</b></div>
-  <div style="font-size:.72rem;color:var(--lime);font-weight:500;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">Treino & Nutrição</div>
-  <div class="ps-tagline">Seleciona o teu perfil para continuar</div>
-  <div class="ps-cards">
-    <div class="ps-card" onclick="selectUser('miguel')" style="--card-accent:var(--blue);">
-      <div class="ps-avatar" style="background:rgba(77,140,255,.15);border-color:rgba(77,140,255,.3);">💪</div>
-      <div class="ps-name" style="color:var(--blue);">Miguel</div>
-      <div class="ps-stat" id="ps-stat-miguel" style="color:var(--text3);">A carregar…</div>
-    </div>
-    <div class="ps-card" onclick="selectUser('tania')" style="--card-accent:var(--pink);">
-      <div class="ps-avatar" style="background:rgba(244,114,182,.15);border-color:rgba(244,114,182,.3);">🌸</div>
-      <div class="ps-name" style="color:var(--pink);">Tânia</div>
-      <div class="ps-stat" id="ps-stat-tania" style="color:var(--text3);">A carregar…</div>
+<!-- ═══ AUTH / PROFILE SCREEN ═══ -->
+<div class="auth-screen" id="authScreen">
+  <!-- Supabase Config -->
+  <div id="sbConfig" style="display:none;width:100%;max-width:340px;">
+    <div class="ps-logo" style="text-align:center;">Fit<b>Pro</b></div>
+    <div style="font-size:.72rem;color:var(--lime);font-weight:500;letter-spacing:.5px;text-transform:uppercase;text-align:center;margin-bottom:6px;">Configuração</div>
+    <div class="ps-tagline" style="text-align:center;">Insere as credenciais do Supabase</div>
+    <div class="auth-form">
+      <div class="field"><label>Supabase URL</label><input type="text" id="sbUrlInput" placeholder="https://xxxxx.supabase.co"></div>
+      <div class="field"><label>Supabase Anon Key</label><input type="text" id="sbKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></div>
+      <button class="btn btn-lime btn-full" onclick="saveSupabaseConfig()">Guardar</button>
+      <div style="font-size:.72rem;color:var(--text3);text-align:center;margin-top:10px;">Obtém estes dados em <strong>Settings > API</strong> no teu projeto Supabase</div>
     </div>
   </div>
-  <div style="position:absolute;bottom:28px;font-size:.68rem;color:var(--text3);text-align:center;">Os dados de cada perfil são guardados separadamente</div>
+
+  <!-- Auth Loading -->
+  <div class="auth-loading" id="authLoading">
+    <div class="auth-spinner"></div>
+    <div style="font-size:.85rem;color:var(--text2);">A conectar…</div>
+  </div>
+
+  <!-- Login Form -->
+  <div id="loginForm" style="display:none;width:100%;max-width:340px;">
+    <div class="ps-logo" style="text-align:center;">Fit<b>Pro</b></div>
+    <div style="font-size:.72rem;color:var(--lime);font-weight:500;letter-spacing:.5px;text-transform:uppercase;text-align:center;margin-bottom:6px;">Treino & Nutrição</div>
+    <div class="ps-tagline" style="text-align:center;">Inicia sessão para continuar</div>
+    <div class="auth-form">
+      <div class="auth-error" id="authError"></div>
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="exemplo@email.com"></div>
+      <div class="field"><label>Palavra-passe</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn btn-lime btn-full" onclick="doLogin()">Entrar</button>
+      <div class="auth-switch">Ainda não tens conta? <a onclick="showSignup()">Criar conta</a></div>
+      <div style="text-align:center;margin-top:12px;"><a style="font-size:.72rem;color:var(--text3);cursor:pointer;text-decoration:underline dotted;" onclick="showConfig()">⚙️ Configurar Supabase</a></div>
+    </div>
+  </div>
+
+  <!-- Signup Form -->
+  <div id="signupForm" style="display:none;width:100%;max-width:340px;">
+    <div class="ps-logo" style="text-align:center;">Fit<b>Pro</b></div>
+    <div style="font-size:.72rem;color:var(--lime);font-weight:500;letter-spacing:.5px;text-transform:uppercase;text-align:center;margin-bottom:6px;">Criar Conta</div>
+    <div class="ps-tagline" style="text-align:center;">Regista-te para sincronizar os teus dados</div>
+    <div class="auth-form">
+      <div class="auth-error" id="signupError"></div>
+      <div class="field"><label>Email</label><input type="email" id="signupEmail" placeholder="exemplo@email.com"></div>
+      <div class="field"><label>Palavra-passe</label><input type="password" id="signupPass" placeholder="Mínimo 6 caracteres"></div>
+      <button class="btn btn-lime btn-full" onclick="doSignup()">Criar conta</button>
+      <div class="auth-switch">Já tens conta? <a onclick="showLogin()">Entrar</a></div>
+    </div>
+  </div>
+
+  <!-- Profile Switcher (shown after auth) -->
+  <div id="profileScreen" style="display:none;width:100%;">
+    <div class="ps-logo" style="text-align:center;">Fit<b>Pro</b></div>
+    <div style="font-size:.72rem;color:var(--lime);font-weight:500;letter-spacing:.5px;text-transform:uppercase;text-align:center;margin-bottom:6px;">Treino & Nutrição</div>
+    <div class="ps-tagline" style="text-align:center;">Seleciona o teu perfil</div>
+    <div class="auth-email" id="authEmailDisplay"></div>
+    <div class="ps-cards">
+      <div class="ps-card" onclick="selectUser('miguel')" style="--card-accent:var(--blue);">
+        <div class="ps-avatar" style="background:rgba(77,140,255,.15);border-color:rgba(77,140,255,.3);">💪</div>
+        <div class="ps-name" style="color:var(--blue);">Miguel</div>
+        <div class="ps-stat" id="ps-stat-miguel" style="color:var(--text3);">A carregar…</div>
+      </div>
+      <div class="ps-card" onclick="selectUser('tania')" style="--card-accent:var(--pink);">
+        <div class="ps-avatar" style="background:rgba(244,114,182,.15);border-color:rgba(244,114,182,.3);">🌸</div>
+        <div class="ps-name" style="color:var(--pink);">Tânia</div>
+        <div class="ps-stat" id="ps-stat-tania" style="color:var(--text3);">A carregar…</div>
+      </div>
+    </div>
+    <div style="margin-top:20px;text-align:center;">
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">🚪 Terminar sessão</button>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST + REST BUBBLE -->
@@ -877,6 +956,123 @@ const DEFAULT_MEALS = () => JSON.parse(JSON.stringify([
 ]));
 
 // ═══════════════════════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════════════════════
+let sb = null;
+let currentUserId = null;
+let currentUserEmail = null;
+let sbReady = false;
+
+function getSupabaseConfig(){
+  return {
+    url: localStorage.getItem('fp_sb_url') || '',
+    key: localStorage.getItem('fp_sb_anon_key') || '',
+  };
+}
+
+function saveSupabaseConfig(){
+  const url = document.getElementById('sbUrlInput').value.trim();
+  const key = document.getElementById('sbKeyInput').value.trim();
+  if(!url || !key){ toast('⚠️ Preenche URL e Anon Key'); return; }
+  localStorage.setItem('fp_sb_url', url);
+  localStorage.setItem('fp_sb_anon_key', key);
+  initSupabase();
+}
+
+function initSupabase(){
+  const cfg = getSupabaseConfig();
+  if(!cfg.url || !cfg.key){ showConfig(); return; }
+  sb = supabase.createClient(cfg.url, cfg.key);
+  sbReady = true;
+  sb.auth.onAuthStateChange((event, session) => {
+    if(event === 'SIGNED_IN' && session){
+      currentUserId = session.user.id;
+      currentUserEmail = session.user.email;
+      showProfileScreen(session.user.email);
+    }
+    if(event === 'SIGNED_OUT'){
+      currentUserId = null;
+      currentUserEmail = null;
+      showLogin();
+    }
+  });
+  checkAuth();
+}
+
+async function checkAuth(){
+  showEl('authLoading', 'on');
+  try{
+    const { data: { session } } = await sb.auth.getSession();
+    if(session){
+      currentUserId = session.user.id;
+      currentUserEmail = session.user.email;
+      showProfileScreen(session.user.email);
+    } else {
+      showLogin();
+    }
+  }catch(e){
+    console.warn('auth error', e);
+    showLogin();
+  }
+  hideEl('authLoading', 'on');
+}
+
+// ─── Auth UI ───
+function showAuth(){ document.getElementById('authScreen').classList.add('open'); }
+function showConfig(){
+  showAuth();
+  hideEl('loginForm'); hideEl('signupForm'); hideEl('profileScreen');
+  showEl('sbConfig');
+}
+function showLogin(){
+  showAuth();
+  hideEl('sbConfig'); hideEl('signupForm'); hideEl('profileScreen');
+  showEl('loginForm');
+}
+function showSignup(){
+  showAuth();
+  hideEl('loginForm'); hideEl('profileScreen'); hideEl('sbConfig');
+  showEl('signupForm');
+}
+function showProfileScreen(email){
+  showAuth();
+  hideEl('sbConfig'); hideEl('loginForm'); hideEl('signupForm');
+  showEl('profileScreen');
+  document.getElementById('authEmailDisplay').textContent = `📧 ${email}`;
+  initProfileScreen();
+}
+function showEl(id, cls){ document.getElementById(id).style.display = 'block'; if(cls) document.getElementById(id).classList.add(cls); }
+function hideEl(id, cls){ document.getElementById(id).style.display = 'none'; if(cls) document.getElementById(id).classList.remove(cls); }
+
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('authError');
+  if(!email || !pass){ err.textContent = '⚠️ Preenche email e palavra-passe'; err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ err.textContent = error.message; err.style.display = 'block'; }
+}
+
+async function doSignup(){
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass = document.getElementById('signupPass').value;
+  const err = document.getElementById('signupError');
+  if(pass.length < 6){ err.textContent = '⚠️ Palavra-passe deve ter 6+ caracteres'; err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  if(error){ err.textContent = error.message; err.style.display = 'block'; return; }
+  toast('✅ Conta criada! Verifica o teu email para confirmar.');
+  showLogin();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  CU = null;
+  currentUserEmail = null;
+}
+
+// ═══════════════════════════════════════════════════════════
 // USERS
 // ═══════════════════════════════════════════════════════════
 const USERS = {
@@ -899,7 +1095,22 @@ function defaultState(){
   };
 }
 
-function getUserStats(uid){
+async function getUserStats(uid){
+  // Try Supabase first
+  if(sbReady && currentUserId){
+    try{
+      const { data } = await sb.from('user_data').select('data').eq('user_id',currentUserId).eq('profile_key',uid).maybeSingle();
+      if(data && data.data){
+        const d = data.data;
+        const wk = (d.history||[]).length;
+        const wArr = d.weights||[];
+        const wt = wArr.length ? wArr[wArr.length-1].w+'kg' : '—';
+        const ph = (d.checkins||[]).length;
+        return `${wk} treino${wk!==1?'s':''}  ·  ${wt}${ph?' · '+ph+' check-ins':''}`;
+      }
+    }catch(e){}
+  }
+  // Fallback to localStorage
   try{
     const raw = localStorage.getItem(uKey(uid));
     if(!raw) return 'Sem dados ainda';
@@ -914,6 +1125,7 @@ function getUserStats(uid){
 
 function saveState(){
   if(!CU) return;
+  // Always save to localStorage (fast, works offline)
   try{
     localStorage.setItem(uKey(CU), JSON.stringify({
       sets:S.sets, swaps:S.swaps, notes:S.notes,
@@ -922,11 +1134,57 @@ function saveState(){
       meals:S.meals, customFoods:DB.foods.filter(f=>f.custom),
       checkins:S.checkins,
     }));
-  }catch(e){ console.warn('save failed',e); }
+  }catch(e){ console.warn('local save failed',e); }
+  // Sync to Supabase (async)
+  if(sbReady && currentUserId){
+    const payload = {
+      user_id: currentUserId,
+      profile_key: CU,
+      data: {
+        sets:S.sets, swaps:S.swaps, notes:S.notes,
+        weights:S.weights, history:S.history, goals:S.goals,
+        water:S.water, exProgress:S.exProgress,
+        meals:S.meals, customFoods:DB.foods.filter(f=>f.custom),
+        checkins:S.checkins,
+      },
+    };
+    sb.from('user_data').upsert(payload, { onConflict: 'user_id, profile_key' })
+      .catch(e => console.warn('supabase sync failed', e));
+  }
 }
 
-function loadState(uid){
+async function loadState(uid){
   const def = defaultState();
+  // Try Supabase first
+  if(sbReady && currentUserId){
+    try{
+      const { data, error } = await sb.from('user_data')
+        .select('data')
+        .eq('user_id', currentUserId)
+        .eq('profile_key', uid)
+        .maybeSingle();
+      if(!error && data && data.data){
+        const d = data.data;
+        const result = {
+          sets:        d.sets         || {},
+          swaps:       d.swaps        || {},
+          notes:       d.notes        || {},
+          weights:     d.weights      || [],
+          history:     d.history      || [],
+          goals:       Object.assign({}, def.goals, d.goals||{}),
+          water:       d.water        ?? 0,
+          exProgress:  d.exProgress   || {},
+          meals:       d.meals        || DEFAULT_MEALS(),
+          customFoods: d.customFoods  || [],
+          checkins:    d.checkins     || [],
+        };
+        // Cache in localStorage
+        try{ localStorage.setItem(uKey(uid), JSON.stringify(result)); }catch(e){}
+        return result;
+      }
+    }catch(e){ console.warn('supabase load failed, falling back', e); }
+  }
+  // Fallback to localStorage
   try{
     const raw = localStorage.getItem(uKey(uid));
     if(!raw) return def;
@@ -1016,17 +1274,17 @@ document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
 // ═══════════════════════════════════════════════════════════
 // PROFILE SWITCHER
 // ═══════════════════════════════════════════════════════════
-function initProfileScreen(){
-  Object.keys(USERS).forEach(uid=>{
+async function initProfileScreen(){
+  for(const uid of Object.keys(USERS)){
     const el = document.getElementById('ps-stat-'+uid);
-    if(el) el.textContent = getUserStats(uid);
-  });
+    if(el) el.textContent = await getUserStats(uid);
+  }
 }
 
-function selectUser(uid){
+async function selectUser(uid){
   CU = uid;
   const usr = USERS[uid];
-  const data = loadState(uid);
+  const data = await loadState(uid);
   // Load into S
   S.sets=data.sets; S.swaps=data.swaps; S.notes=data.notes;
   S.weights=data.weights; S.history=data.history; S.goals=data.goals;
@@ -1051,8 +1309,8 @@ function selectUser(uid){
   fillGoalInputs();
   document.getElementById('wtDate').value = todayISO();
   renderWtList();
-  // Hide switcher
-  document.getElementById('psScreen').style.display = 'none';
+  // Hide auth screen
+  document.getElementById('authScreen').classList.remove('open');
   // Render
   goPage('treino');
   toast(`👋 Olá, ${usr.name}!`);
@@ -1060,8 +1318,8 @@ function selectUser(uid){
 
 function switchUser(){
   saveState();
-  initProfileScreen();
-  document.getElementById('psScreen').style.display = 'flex';
+  document.getElementById('authScreen').classList.add('open');
+  showProfileScreen(currentUserEmail || '—');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1864,15 +2122,29 @@ function openAchievements(){
     <button class="btn btn-danger btn-full" onclick="confirmReset()">🗑️ Apagar todos os dados</button>`;
   openModal('achModal');
 }
-function confirmReset(){ if(confirm('⚠️ Apagar TODOS os dados deste perfil?')){ localStorage.removeItem(uKey(CU)); location.reload(); } }
+async function confirmReset(){
+  if(!confirm('⚠️ Apagar TODOS os dados deste perfil?')) return;
+  localStorage.removeItem(uKey(CU));
+  if(sbReady && currentUserId){
+    try{
+      await sb.from('user_data').delete().eq('user_id', currentUserId).eq('profile_key', CU);
+    }catch(e){}
+  }
+  location.reload();
+}
 
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
 function init(){
   initHeader();
-  initProfileScreen();
-  // Profile switcher is shown; app renders after selectUser()
+  const cfg = getSupabaseConfig();
+  if(cfg.url && cfg.key){
+    initSupabase();
+  } else {
+    document.getElementById('authScreen').classList.add('open');
+    showConfig();
+  }
 }
 
 init();
