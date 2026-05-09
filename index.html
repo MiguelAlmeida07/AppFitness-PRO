@@ -6,7 +6,7 @@
 <title>FitPro — Treino & Nutrição</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#0c0c0f;--bg2:#131318;--bg3:#1a1a22;--bg4:#22222e;--bg5:#2a2a38;
@@ -975,6 +975,10 @@ function saveSupabaseConfig(){
   const key = document.getElementById('sbKeyInput').value.trim();
   if(!url || !key){ toast('⚠️ Preenche URL e Anon Key'); return; }
   url = url.replace(/\/+$/, '');
+  if(!url.startsWith('https://') && !url.startsWith('http://')){
+    toast('⚠️ URL deve começar com https://');
+    return;
+  }
   localStorage.setItem('fp_sb_url', url);
   localStorage.setItem('fp_sb_anon_key', key);
   initSupabase();
@@ -1060,8 +1064,14 @@ async function doLogin(){
   const err = document.getElementById('authError');
   if(!email || !pass){ err.textContent = '⚠️ Preenche email e palavra-passe'; err.style.display = 'block'; return; }
   err.style.display = 'none';
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(error){ err.textContent = error.message; err.style.display = 'block'; }
+  try{
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(error){ err.textContent = error.message; err.style.display = 'block'; }
+  }catch(e){
+    err.textContent = '❌ ' + (e.message || 'Erro inesperado');
+    err.style.display = 'block';
+    console.error('login error', e);
+  }
 }
 
 async function doSignup(){
@@ -1070,10 +1080,20 @@ async function doSignup(){
   const err = document.getElementById('signupError');
   if(pass.length < 6){ err.textContent = '⚠️ Palavra-passe deve ter 6+ caracteres'; err.style.display = 'block'; return; }
   err.style.display = 'none';
-  const { error } = await sb.auth.signUp({ email, password: pass });
-  if(error){ err.textContent = error.message; err.style.display = 'block'; return; }
-  toast('✅ Conta criada! Verifica o teu email para confirmar.');
-  showLogin();
+  try{
+    const { error } = await sb.auth.signUp({
+      email,
+      password: pass,
+      options: { emailRedirectTo: window.location.origin }
+    });
+    if(error){ err.textContent = error.message; err.style.display = 'block'; return; }
+    toast('✅ Conta criada! Verifica o teu email para confirmar.');
+    showLogin();
+  }catch(e){
+    err.textContent = '❌ ' + (e.message || 'Erro inesperado');
+    err.style.display = 'block';
+    console.error('signup error', e);
+  }
 }
 
 async function doLogout(){
