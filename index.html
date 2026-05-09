@@ -395,7 +395,7 @@ select option{background:var(--bg3);}
     <div style="font-size:.72rem;color:var(--lime);font-weight:500;letter-spacing:.5px;text-transform:uppercase;text-align:center;margin-bottom:6px;">Configuração</div>
     <div class="ps-tagline" style="text-align:center;">Insere as credenciais do Supabase</div>
     <div class="auth-form">
-      <div class="field"><label>Supabase URL</label><input type="text" id="sbUrlInput" placeholder="https://xxxxx.supabase.co" autocomplete="off"></div>
+      <div class="field"><label>Supabase URL (Project URL, sem /rest/v1)</label><input type="text" id="sbUrlInput" placeholder="https://xxxxx.supabase.co" autocomplete="off"></div>
       <div class="field"><label>Supabase Anon Key</label><input type="text" id="sbKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off"></div>
       <button class="btn btn-lime btn-full" onclick="saveSupabaseConfig()">Guardar</button>
       <button class="btn btn-ghost btn-full" style="margin-top:6px;" onclick="clearSupabaseConfig()">🗑 Limpar e voltar</button>
@@ -990,7 +990,12 @@ function saveSupabaseConfig(){
   if(!url.startsWith('http://') && !url.startsWith('https://')){
     url = 'https://' + url;
   }
-  url = url.replace(/\/+$/, '');
+  try{
+    url = new URL(url).origin;
+  }catch(e){
+    toast('⚠️ URL inválida');
+    return;
+  }
   localStorage.setItem('fp_sb_url', url);
   localStorage.setItem('fp_sb_anon_key', key);
   initSupabase();
