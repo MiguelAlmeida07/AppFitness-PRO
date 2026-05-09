@@ -90,7 +90,7 @@ const DB = {
     {id:'r6',name:'Salada Atum & Quinoa',emoji:'🥗',cat:'Almoço',time:'15min',cal:380,prot:35,carb:38,fat:9,
       ing:[{fid:'f07',g:140},{fid:'f22',g:150},{fid:'f23',g:80},{fid:'f13',g:40},{fid:'f10',g:8}],
       steps:['Coze a quinoa 12min.','Escorre o atum.','Mistura tudo numa taça.','Tempera com limão, sal e azeite.','Serve frio.'],mid:'m3'},
-    {id:'r7',name:'Bolo de Banana',emoji:'🍌',cat:'Lanche',time:'40 min',cal:842,prot:56,carb:116,fat:20,
+    {id:'r7',name:'Bolo de Banana',emoji:'🍌',cat:'Lanche',time:'40 min',cal:842,prot:56,carb:116,fat:20,photo:'static/imagens/bolo-de-banana.png',
       ing:[{fid:'f06',g:200},{fid:'f04',g:100},{fid:'f05',g:100},{fid:'f20',g:30}],
       steps:['Coloca as 2 bananas, 2 ovos e 100g de farinha de aveia no liquidificador e tritura tudo.','Adiciona 1 colher de chá de fermento em pó e volta a misturar.','Unta com azeite uma forma e coloca lá o preparado.','Leva ao forno a 180º por 30 a 40 minutos (vê com um palito se está cozido).','Para a cobertura coloca 30g whey numa taça e adiciona um pouco de água, mistura bem até ficar com uma consistência tipo mousse (cuidado para não colocares demasiada água).'],
       mid:'m4'},
@@ -1214,7 +1214,7 @@ function renderRecipes(){
   const grid=document.getElementById('rcGrid'); grid.innerHTML='';
   DB.recipes.filter(r=>S.rcFilter==='Todos'||r.cat===S.rcFilter).forEach(r=>{
     const card=document.createElement('div'); card.className='recipe-card';
-    card.innerHTML=`<div class="rc-banner">${r.emoji}</div>
+    card.innerHTML=`<div class="rc-banner"${r.photo?` style="background-image:url('${r.photo}');background-size:cover;background-position:center;font-size:0;"`:''}>${r.photo?'':r.emoji}</div>
       <div class="rc-body">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:3px;">
           <div class="rc-name">${r.name}</div><span class="tag tg-lime" style="flex-shrink:0;">${r.cal} kcal</span>
@@ -1235,6 +1235,7 @@ function openRecipe(rid){
   const ingHTML=r.ing.map(ing=>{ const f=foodById(ing.fid); const m=macros(ing.fid,ing.g); return `<div class="food-item"><div style="flex:1;"><div class="food-name">${f.emoji} ${f.name}</div><div class="food-meta">${ing.g}g · ${m.cal} kcal</div></div></div>`; }).join('');
   const stepsHTML=r.steps.map((s,i)=>`<div style="display:flex;gap:9px;margin-bottom:11px;align-items:flex-start;"><div class="step-badge">${i+1}</div><div style="font-size:.84rem;line-height:1.65;color:var(--text2);">${s}</div></div>`).join('');
   document.getElementById('rcModalBody').innerHTML=`
+    ${r.photo?`<img src="${r.photo}" alt="${r.name}" style="width:100%;border-radius:var(--r2);margin-bottom:13px;object-fit:cover;max-height:220px;">`:''}
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:13px;">
       <span class="tag tg-lime">${r.cal} kcal</span><span class="tag tg-blue">P:${r.prot}g</span><span class="tag tg-orange">H:${r.carb}g</span><span class="tag tg-purple">G:${r.fat}g</span><span class="tag tg-teal">⏱ ${r.time}</span>
     </div>
