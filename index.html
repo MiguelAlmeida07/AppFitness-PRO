@@ -6,7 +6,7 @@
 <title>FitPro — Treino & Nutrição</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{
   --bg:#0c0c0f;--bg2:#131318;--bg3:#1a1a22;--bg4:#22222e;--bg5:#2a2a38;
@@ -971,9 +971,10 @@ function getSupabaseConfig(){
 }
 
 function saveSupabaseConfig(){
-  const url = document.getElementById('sbUrlInput').value.trim();
+  let url = document.getElementById('sbUrlInput').value.trim();
   const key = document.getElementById('sbKeyInput').value.trim();
   if(!url || !key){ toast('⚠️ Preenche URL e Anon Key'); return; }
+  url = url.replace(/\/+$/, '');
   localStorage.setItem('fp_sb_url', url);
   localStorage.setItem('fp_sb_anon_key', key);
   initSupabase();
@@ -982,7 +983,13 @@ function saveSupabaseConfig(){
 function initSupabase(){
   const cfg = getSupabaseConfig();
   if(!cfg.url || !cfg.key){ showConfig(); return; }
-  sb = supabase.createClient(cfg.url, cfg.key);
+  try{
+    sb = supabase.createClient(cfg.url, cfg.key);
+  }catch(e){
+    toast('❌ Erro ao conectar ao Supabase: verifica URL e Key');
+    showConfig();
+    return;
+  }
   sbReady = true;
   sb.auth.onAuthStateChange((event, session) => {
     if(event === 'SIGNED_IN' && session){
@@ -1012,6 +1019,9 @@ async function checkAuth(){
     }
   }catch(e){
     console.warn('auth error', e);
+    const errEl = document.getElementById('authError');
+    errEl.textContent = '❌ Erro de conexão: verifica se o URL do Supabase está correto';
+    errEl.style.display = 'block';
     showLogin();
   }
   hideEl('authLoading', 'on');
