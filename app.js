@@ -3,9 +3,16 @@
 // ═══════════════════════════════════════════════════════════
 const DB = {
   workouts: {
-    T1:{name:'Treino 1',tag:'Peito · Costas · Pernas',exercises:['e01','e06','e20','e11','e29']},
-    T2:{name:'Treino 2',tag:'Costas · Ombros · Glúteos',exercises:['e02','e07','e26','e14','e17']},
-    T3:{name:'Treino 3',tag:'Pernas · Braços · Core',exercises:['e20','e21','e12','e17','e30']},
+    miguel: {
+      T1:{name:'Treino 1',tag:'Peito · Costas · Pernas',exercises:['e01','e06','e20','e11','e29']},
+      T2:{name:'Treino 2',tag:'Costas · Ombros · Glúteos',exercises:['e02','e07','e26','e14','e17']},
+      T3:{name:'Treino 3',tag:'Pernas · Braços · Core',exercises:['e20','e21','e12','e17','e30']},
+    },
+    tania: {
+      T1:{name:'Treino 1',tag:'Peito · Costas · Pernas',exercises:['e01','e06','e20','e11','e29']},
+      T2:{name:'Treino 2',tag:'Costas · Ombros · Glúteos',exercises:['e02','e07','e26','e14','e17']},
+      T3:{name:'Treino 3',tag:'Pernas · Braços · Core',exercises:['e20','e21','e12','e17','e30']},
+    },
   },
   schedule: ['T1', null, 'T2', null, 'T3', null, null],
 
@@ -42,6 +49,7 @@ const DB = {
     {id:'e30',name:'Crunch',muscle:'Core',tr:20,video:''},
     {id:'e31',name:'Russian Twist',muscle:'Core',tr:20,video:''},
     {id:'e32',name:'Passadeira HIIT',muscle:'Cardio',tr:20,video:''},
+    {id:'e33',name:'Supino Plano com Halteres',muscle:'Peito',tr:10,video:'https://www.youtube.com/embed/6JtP6ju0IMw'},
   ],
 
   foods: [
@@ -429,6 +437,7 @@ S.progExId      = 'e01';
 const foodById = id => DB.foods.find(f=>f.id===id);
 const exById   = id => DB.exercises.find(e=>e.id===id);
 const byMuscle = m  => DB.exercises.filter(e=>e.muscle===m);
+const userWk   = () => DB.workouts[CU];
 const todayISO = () => new Date().toISOString().slice(0,10);
 const fmtDate  = s  => { const d=new Date(s+'T12:00'); return d.toLocaleDateString('pt-PT',{day:'numeric',month:'short'}); };
 const dowName  = d  => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d];
@@ -455,7 +464,7 @@ function setsOf(eid){
   return S.sets[eid];
 }
 function wkExIds(){
-  const plan = DB.workouts[S.activeWorkout];
+  const plan = userWk()[S.activeWorkout];
   const sw   = S.swaps[S.activeWorkout]||{};
   return plan.exercises.map((id,i)=>sw[i]||id);
 }
@@ -551,8 +560,8 @@ function updateHero(){
   const dow = new Date().getDay();
   const wk  = DB.schedule[dow2sch(dow)];
   if(wk){
-    document.getElementById('heroWk').textContent       = DB.workouts[wk].name;
-    document.getElementById('heroTag').textContent      = DB.workouts[wk].tag;
+    document.getElementById('heroWk').textContent       = userWk()[wk].name;
+    document.getElementById('heroTag').textContent      = userWk()[wk].tag;
     document.getElementById('heroStartBtn').style.display = '';
     document.getElementById('heroEye').textContent      = 'Semana 1 · Treino hoje';
   } else {
@@ -587,7 +596,7 @@ function renderWeekStrip(){
 function renderWkTabs(){
   const tabs = document.getElementById('wTabs');
   tabs.innerHTML='';
-  Object.entries(DB.workouts).forEach(([key,plan])=>{
+  Object.entries(userWk()).forEach(([key,plan])=>{
     const b=document.createElement('button');
     b.className='w-tab'+(S.activeWorkout===key?' active':'');
     b.textContent=plan.name;
@@ -701,7 +710,7 @@ function saveWorkout(){
   exIds.forEach(eid=>{ const ss=setsOf(eid).filter(s=>s.done); sets+=ss.length; vol+=ss.reduce((a,s)=>a+(parseFloat(s.w||0)*parseInt(s.r||0)),0); });
   S.history.push({date:todayISO(),wk:S.activeWorkout,sets,vol:Math.round(vol)});
   saveState(); renderStreak();
-  toast(`💾 ${DB.workouts[S.activeWorkout].name} guardado!`);
+  toast(`💾 ${userWk()[S.activeWorkout].name} guardado!`);
 }
 
 function openSwap(wk,slot,muscle){
@@ -743,10 +752,10 @@ function startSession(){
   if(wk){ S.activeWorkout=wk; renderWkTabs(); renderExercises(); }
   S.sessStart = Date.now();
   document.getElementById('sessBar').classList.add('on');
-  document.getElementById('sbLabel').textContent = ` · ${DB.workouts[S.activeWorkout].name}`;
-  document.getElementById('sessInfo').textContent = DB.workouts[S.activeWorkout].name;
+  document.getElementById('sbLabel').textContent = ` · ${userWk()[S.activeWorkout].name}`;
+  document.getElementById('sessInfo').textContent = userWk()[S.activeWorkout].name;
   S.sessInterval = setInterval(tickSession,1000);
-  toast(`🏋️ ${DB.workouts[S.activeWorkout].name} iniciado!`);
+  toast(`🏋️ ${userWk()[S.activeWorkout].name} iniciado!`);
 }
 function tickSession(){
   if(!S.sessStart) return;
@@ -1078,7 +1087,7 @@ function renderHistory(){
   if(!S.history.length){c.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><p>Sem treinos registados.<br>Inicia a tua primeira sessão!</p></div>`;return;}
   c.innerHTML='';
   [...S.history].reverse().forEach(h=>{
-    const plan=DB.workouts[h.wk]||{name:h.wk,tag:''};
+    const plan=userWk()[h.wk]||{name:h.wk,tag:''};
     const el=document.createElement('div'); el.className='hist-item';
     el.innerHTML=`<div><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;">${plan.name}</div><div style="font-size:.69rem;color:var(--text2);">${fmtDate(h.date)}${h.dur?` · ⏱ ${h.dur}`:''}${h.sets?` · ${h.sets} séries`:''}${h.vol?` · ${h.vol}kg vol`:''}</div></div><button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;" onclick="delHistory('${h.date}','${h.wk}')">✕</button>`;
     c.appendChild(el);
