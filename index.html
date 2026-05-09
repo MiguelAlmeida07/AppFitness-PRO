@@ -42,6 +42,7 @@
       <div class="auth-error" id="authError"></div>
       <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="exemplo@email.com"></div>
       <div class="field"><label>Palavra-passe</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <label class="remember-row"><input type="checkbox" id="rememberCheck"> Manter sessão</label>
       <button class="btn btn-lime btn-full" onclick="doLogin()">Entrar</button>
       <div class="auth-switch">Ainda não tens conta? <a onclick="showSignup()">Criar conta</a></div>
       <div style="text-align:center;margin-top:12px;"><a style="font-size:.72rem;color:var(--text3);cursor:pointer;text-decoration:underline dotted;" onclick="showConfig()">⚙️ Configurar Supabase</a></div>

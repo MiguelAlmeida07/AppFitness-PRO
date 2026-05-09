@@ -157,7 +157,7 @@ function initSupabase(){
   try{
     const { createClient } = supabase;
     sb = createClient(cfg.url, cfg.key, {
-      auth: { persistSession: false }
+      auth: { persistSession: localStorage.getItem('fp_remember')==='true' }
     });
   }catch(e){
     console.error('[FitPro] Erro createClient:', e);
@@ -237,6 +237,8 @@ async function doLogin(){
   const pass = document.getElementById('loginPass').value;
   const err = document.getElementById('authError');
   if(!email || !pass){ err.textContent = '⚠️ Preenche email e palavra-passe'; err.style.display = 'block'; return; }
+  const remember = document.getElementById('rememberCheck').checked;
+  localStorage.setItem('fp_remember', remember ? 'true' : 'false');
   err.style.display = 'none';
   try{
     const { error } = await sb.auth.signInWithPassword({ email, password: pass });
@@ -1312,6 +1314,7 @@ async function confirmReset(){
 // ═══════════════════════════════════════════════════════════
 function init(){
   initHeader();
+  document.getElementById('rememberCheck').checked = localStorage.getItem('fp_remember')==='true';
   const cfg = getSupabaseConfig();
   if(cfg.url && cfg.key){
     initSupabase();
