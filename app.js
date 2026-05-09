@@ -351,6 +351,7 @@ function saveState(){
       },
     };
     sb.from('user_data').upsert(payload, { onConflict: 'user_id, profile_key' })
+      .then(({error}) => { if(error) console.warn('supabase sync failed', error); })
       .catch(e => console.warn('supabase sync failed', e));
   }
 }
