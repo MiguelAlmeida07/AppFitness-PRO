@@ -4,17 +4,18 @@
 const DB = {
   workouts: {
     miguel: {
+      schedule: [null, 'T1', null, null, 'T2', 'T3', null],
       T1: { name: 'Treino 1', tag: 'Peito · Costas · Pernas', exercises: ['e33', 'e34', 'e35', 'e36', 'e17', 'e37'] },
       T2: { name: 'Treino 2', tag: 'Costas · Ombros · Glúteos', exercises: ['e38', 'e39', 'e40', 'e12', 'e41', 'e31',] },
       T3: { name: 'Treino 3', tag: 'Pernas · Braços · Core', exercises: ['e42', 'e33', 'e43', 'e44', 'e45', 'e37'] },
     },
     tania: {
+      schedule: ['T1', null, 'T2', null, 'T3', null, null],
       T1: { name: 'Treino 1', tag: 'Peito · Costas · Pernas', exercises: ['e34', 'e06', 'e20', 'e11', 'e29'] },
       T2: { name: 'Treino 2', tag: 'Costas · Ombros · Glúteos', exercises: ['e02', 'e07', 'e26', 'e14', 'e17'] },
       T3: { name: 'Treino 3', tag: 'Pernas · Braços · Core', exercises: ['e20', 'e21', 'e12', 'e17', 'e30'] },
     },
   },
-  schedule: ['T1', null, 'T2', null, 'T3', null, null],
 
   exercises: [
     { id: 'e01', name: 'Press de Banca', muscle: 'Peito', tr: 10, video: 'https://www.youtube.com/embed/rT7DgCr-3pg' },
@@ -527,7 +528,7 @@ async function selectUser(uid) {
   document.getElementById('ucAvatar').style.background = uid === 'miguel' ? 'rgba(77,140,255,.2)' : 'rgba(244,114,182,.2)';
   document.getElementById('ucAvatar').style.borderColor = uid === 'miguel' ? 'rgba(77,140,255,.4)' : 'rgba(244,114,182,.4)';
   S.activeDay = new Date().getDay();
-  S.activeWorkout = DB.schedule[dow2sch(S.activeDay)] || 'T1';
+  S.activeWorkout = userWk().schedule[dow2sch(S.activeDay)] || 'T1';
   S.activeMeal = 'm1';
   S.activePage = 'treino';
   Object.values(S.charts).forEach(c => { try { c.destroy(); } catch (e) { } });
@@ -584,7 +585,7 @@ function initTreino() {
 
 function updateHero() {
   const dow = new Date().getDay();
-  const wk = DB.schedule[dow2sch(dow)];
+  const wk = userWk().schedule[dow2sch(dow)];
   if (wk) {
     document.getElementById('heroWk').textContent = userWk()[wk].name;
     document.getElementById('heroTag').textContent = userWk()[wk].tag;
@@ -608,13 +609,13 @@ function renderWeekStrip() {
     startMon.setDate(today.getDate() - dow2sch(today.getDay()));
     d.setDate(startMon.getDate() + i);
     const dow = d.getDay();
-    const hasW = !!DB.schedule[i];
+    const hasW = !!userWk().schedule[i];
     const isToday = d.toDateString() === today.toDateString();
     const isSel = dow === S.activeDay;
     const el = document.createElement('div');
     el.className = 'dd' + (isToday ? ' today' : '') + (isSel ? ' sel' : '') + (hasW ? ' has-w' : ' rest-d');
     el.innerHTML = `<span class="dl">${dowName(dow)}</span><span class="dn">${d.getDate()}</span><span class="dd-dot"></span>`;
-    el.onclick = () => { S.activeDay = dow; const w = DB.schedule[dow2sch(dow)]; if (w) S.activeWorkout = w; renderWeekStrip(); renderWkTabs(); renderExercises(); };
+    el.onclick = () => { S.activeDay = dow; const w = userWk().schedule[dow2sch(dow)]; if (w) S.activeWorkout = w; renderWeekStrip(); renderWkTabs(); renderExercises(); };
     strip.appendChild(el);
   }
 }
@@ -622,7 +623,7 @@ function renderWeekStrip() {
 function renderWkTabs() {
   const tabs = document.getElementById('wTabs');
   tabs.innerHTML = '';
-  Object.entries(userWk()).forEach(([key, plan]) => {
+  Object.entries(userWk()).filter(([k]) => k !== 'schedule').forEach(([key, plan]) => {
     const b = document.createElement('button');
     b.className = 'w-tab' + (S.activeWorkout === key ? ' active' : '');
     b.textContent = plan.name;
@@ -774,7 +775,7 @@ function openVideo(eid) {
 // ═══════════════════════════════════════════════════════════
 function startSession() {
   if (S.sessStart) { openModal('sessModal'); return; }
-  const dow = new Date().getDay(); const wk = DB.schedule[dow2sch(dow)];
+  const dow = new Date().getDay(); const wk = userWk().schedule[dow2sch(dow)];
   if (wk) { S.activeWorkout = wk; renderWkTabs(); renderExercises(); }
   S.sessStart = Date.now();
   document.getElementById('sessBar').classList.add('on');
@@ -837,13 +838,13 @@ function renderStreak() {
   for (let i = 0; i < 60; i++) {
     const d = new Date(today); d.setDate(today.getDate() - i);
     const iso = d.toISOString().slice(0, 10);
-    const isTrainDay = !!DB.schedule[dow2sch(d.getDay())];
+    const isTrainDay = !!userWk().schedule[dow2sch(d.getDay())];
     if (isTrainDay) { if (trainedDates.has(iso)) streak++; else if (i > 0) break; }
   }
   const days = [];
   for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(today.getDate() - i); days.push({ iso: d.toISOString().slice(0, 10), dow: d.getDay(), isToday: i === 0 }); }
   const strip = days.map(d => {
-    const isT = !!DB.schedule[dow2sch(d.dow)];
+    const isT = !!userWk().schedule[dow2sch(d.dow)];
     const done = trainedDates.has(d.iso);
     let cls = 'sk-day'; if (done) cls += ' done'; else if (d.isToday && isT) cls += ' today'; else cls += ' rest';
     return `<div class="${cls}">${dowName(d.dow)[0]}</div>`;
