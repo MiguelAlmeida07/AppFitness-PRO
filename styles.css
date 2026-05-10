@@ -385,3 +385,10 @@ select option{background:var(--bg3);}
 @keyframes spin{to{transform:rotate(360deg);}}
 .auth-avatar{margin-bottom:12px;}
 .auth-email{font-size:.82rem;color:var(--text2);margin-bottom:16px;text-align:center;}
+
+/* ── CARDIO ── */
+#cardioMap .leaflet-container{background:#1a1a22;}
+#cardioMap .leaflet-control-zoom a{background:var(--bg4);color:var(--text);border-color:var(--border2);}
+#cardioMap .leaflet-control-zoom a:hover{background:var(--bg5);}
+#cardioMap .leaflet-control-attribution{display:none;}
+#cardioMap .leaflet-control-zoom{margin:8px;}

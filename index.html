@@ -7,6 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>document.write('<link rel="stylesheet" href="styles.css?v='+Date.now()+'">');</script>
 </head>
 <body>
@@ -156,6 +158,45 @@
   </div>
 </div>
 
+<!-- ═══════════════ PAGE: CARDIO ═══════════════ -->
+<div class="page" id="page-cardio">
+
+  <div class="hero fi" style="padding-bottom:10px;">
+    <div class="hero-eye" style="text-transform:uppercase;">Passadeira</div>
+    <div class="hero-title">Cardio</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-lime btn-sm" id="cardioStartBtn" onclick="startCardio()">▶ Iniciar</button>
+      <button class="btn btn-danger btn-sm" id="cardioStopBtn" onclick="stopCardio()" style="display:none;">⏹ Parar</button>
+      <span class="tag tg-lime" id="cardioStatusTag">Pronto</span>
+    </div>
+  </div>
+
+  <div class="card fi" style="padding:0;overflow:hidden;border-radius:var(--r2);height:220px;">
+    <div id="cardioMap" style="width:100%;height:100%;"></div>
+  </div>
+
+  <div class="card fi" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;padding:12px;">
+    <div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--lime);" id="cardioTime">00:00</div><div style="font-size:.65rem;color:var(--text2);">⏱ Duração</div></div>
+    <div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--blue);" id="cardioDist">0.00</div><div style="font-size:.65rem;color:var(--text2);">📏 km</div></div>
+    <div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--teal);" id="cardioPace">—</div><div style="font-size:.65rem;color:var(--text2);">⚡ Ritmo</div></div>
+  </div>
+
+  <div class="card fi" style="padding:14px;">
+    <div class="mgr"><div class="mgr-l">Velocidade</div><div class="mgr-b"><input type="range" min="4" max="16" step="0.5" value="8" id="cardioSpeed" oninput="updateCardioSpeed()" style="width:100%;"></div><div class="mgr-v" style="color:var(--lime);" id="cardioSpeedVal">8.0 km/h</div></div>
+    <div class="mgr"><div class="mgr-l">Inclinação</div><div class="mgr-b"><input type="range" min="0" max="15" step="1" value="0" id="cardioIncline" oninput="updateCardioIncline()" style="width:100%;"></div><div class="mgr-v" style="color:var(--orange);" id="cardioInclineVal">0%</div></div>
+    <div class="mgr"><div class="mgr-l">Percurso</div><div class="mgr-b"><select id="cardioRoute" onchange="selectCardioRoute()" style="width:100%;padding:5px 8px;border-radius:var(--r);background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-size:.78rem;"></select></div></div>
+  </div>
+
+  <div class="sec-hdr fi"><div class="sec-title">📋 Últimas Sessões</div></div>
+  <div id="cardioHistory" class="fi"></div>
+
+  <div class="divider fi"></div>
+  <div class="fi" style="padding-bottom:20px;text-align:center;">
+    <button class="btn btn-ghost btn-sm" onclick="resetCardioHistory()">🗑 Limpar histórico</button>
+  </div>
+
+</div>
+
 <!-- ═══════════════ PAGE: ALIMENTAÇÃO ═══════════════ -->
 <div class="page" id="page-alimentacao">
 
@@ -270,6 +311,9 @@
 <nav class="nav">
   <button class="nav-btn active" onclick="goPage('treino')" id="nav-treino">
     <svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M6.5 12h11M3 6.5h.5M3 12h.5M3 17.5h.5M20.5 6.5H21M20.5 12H21M20.5 17.5H21"/></svg>Treino
+  </button>
+  <button class="nav-btn" onclick="goPage('cardio')" id="nav-cardio">
+    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Cardio
   </button>
   <button class="nav-btn" onclick="goPage('alimentacao')" id="nav-alimentacao">
     <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 4.5-3.5 8.5-7 11-3.5-2.5-7-6.5-7-11a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>Alimentação

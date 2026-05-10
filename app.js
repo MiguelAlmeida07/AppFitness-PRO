@@ -132,6 +132,52 @@ const DB = {
   ],
 };
 
+// ═══════════════════════════════════════════════════════════
+// CARDIO ROUTES
+// ═══════════════════════════════════════════════════════════
+const CARDIO_ROUTES = {
+  r1: {
+    name: 'Parque 1km', dist: 1.0,
+    coords: [[38.7688,-9.0933],[38.7695,-9.0938],[38.7702,-9.0940],[38.7710,-9.0935],[38.7715,-9.0925],[38.7718,-9.0915],[38.7717,-9.0905],[38.7712,-9.0898],[38.7705,-9.0895],[38.7698,-9.0895],[38.7692,-9.0900],[38.7688,-9.0908],[38.7686,-9.0918],[38.7686,-9.0928],[38.7688,-9.0933]],
+  },
+  r2: {
+    name: 'Marginal 2.5km', dist: 2.5,
+    coords: [[38.7688,-9.0933],[38.7697,-9.0945],[38.7708,-9.0955],[38.7718,-9.0963],[38.7730,-9.0968],[38.7742,-9.0970],[38.7755,-9.0968],[38.7765,-9.0960],[38.7772,-9.0950],[38.7775,-9.0938],[38.7772,-9.0925],[38.7765,-9.0915],[38.7755,-9.0908],[38.7745,-9.0905],[38.7735,-9.0908],[38.7725,-9.0915],[38.7715,-9.0923],[38.7705,-9.0928],[38.7695,-9.0930],[38.7688,-9.0933]],
+  },
+  r3: {
+    name: 'Circuito 5km', dist: 5.0,
+    coords: [[38.7688,-9.0933],[38.7695,-9.0948],[38.7705,-9.0962],[38.7715,-9.0975],[38.7728,-9.0985],[38.7742,-9.0990],[38.7758,-9.0992],[38.7772,-9.0990],[38.7785,-9.0982],[38.7795,-9.0970],[38.7800,-9.0955],[38.7800,-9.0938],[38.7795,-9.0922],[38.7785,-9.0910],[38.7772,-9.0900],[38.7758,-9.0895],[38.7742,-9.0895],[38.7728,-9.0900],[38.7715,-9.0910],[38.7705,-9.0920],[38.7695,-9.0928],[38.7688,-9.0933]],
+  },
+};
+
+function calcRouteSegs(route) {
+  const R = 6371;
+  const segs = [0];
+  for (let i = 1; i < route.coords.length; i++) {
+    const a = route.coords[i - 1], b = route.coords[i];
+    const dLat = (b[0] - a[0]) * Math.PI / 180, dLng = (b[1] - a[1]) * Math.PI / 180;
+    const lat1 = a[0] * Math.PI / 180, lat2 = b[0] * Math.PI / 180;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    segs.push(segs[i - 1] + R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)));
+  }
+  return segs;
+}
+
+function posOnRoute(route, dist) {
+  const segs = route._segs || (route._segs = calcRouteSegs(route));
+  const total = segs[segs.length - 1];
+  const frac = Math.min(dist / total, 1);
+  const target = frac * total;
+  for (let i = 1; i < segs.length; i++) {
+    if (segs[i] >= target) {
+      const t = (target - segs[i - 1]) / (segs[i] - segs[i - 1]);
+      return { lat: route.coords[i - 1][0] + (route.coords[i][0] - route.coords[i - 1][0]) * t, lng: route.coords[i - 1][1] + (route.coords[i][1] - route.coords[i - 1][1]) * t, segIdx: i };
+    }
+  }
+  const last = route.coords[route.coords.length - 1];
+  return { lat: last[0], lng: last[1], segIdx: route.coords.length - 1 };
+}
+
 const DEFAULT_MEALS = () => JSON.parse(JSON.stringify([
   { id: 'm1', name: 'Pequeno-Almoço', emoji: '🌅', time: '07:30', foods: [{ fid: 'f05', g: 80 }, { fid: 'f17', g: 250 }, { fid: 'f06', g: 100 }] },
   { id: 'm2', name: 'Lanche Manhã', emoji: '🍎', time: '10:30', foods: [{ fid: 'f09', g: 150 }, { fid: 'f15', g: 150 }, { fid: 'f20', g: 30 }] },
@@ -333,6 +379,7 @@ function defaultState() {
     meals: DEFAULT_MEALS(),
     customFoods: [],
     checkins: [],
+    cardioHistory: [],
   };
 }
 
@@ -370,7 +417,7 @@ function saveState() {
       weights: S.weights, history: S.history, goals: S.goals,
       water: S.water, exProgress: S.exProgress,
       meals: S.meals, customFoods: DB.foods.filter(f => f.custom),
-      checkins: S.checkins,
+      checkins: S.checkins, cardioHistory: S.cardioHistory,
     }));
   } catch (e) { console.warn('local save failed', e); }
   if (sbReady && currentUserId) {
@@ -382,7 +429,7 @@ function saveState() {
         weights: S.weights, history: S.history, goals: S.goals,
         water: S.water, exProgress: S.exProgress,
         meals: S.meals, customFoods: DB.foods.filter(f => f.custom),
-        checkins: S.checkins,
+        checkins: S.checkins, cardioHistory: S.cardioHistory,
       },
     };
     sb.from('user_data').upsert(payload, { onConflict: 'user_id, profile_key' })
@@ -414,6 +461,7 @@ async function loadState(uid) {
           meals: d.meals || DEFAULT_MEALS(),
           customFoods: d.customFoods || [],
           checkins: d.checkins || [],
+          cardioHistory: d.cardioHistory || [],
         };
         if (result.goals.water === 8) result.goals.water = 10;
         try { localStorage.setItem(uKey(uid), JSON.stringify(result)); } catch (e) { }
@@ -437,6 +485,7 @@ async function loadState(uid) {
       meals: d.meals || DEFAULT_MEALS(),
       customFoods: d.customFoods || [],
       checkins: d.checkins || [],
+      cardioHistory: d.cardioHistory || [],
     };
     if (result.goals.water === 8) result.goals.water = 10;
     return result;
@@ -460,6 +509,17 @@ S.restLeft = 90;
 S.restTarget = 90;
 S.restInterval = null;
 S.progExId = 'e01';
+S.cardioActive = false;
+S.cardioStartTime = null;
+S.cardioSpeed = 8;
+S.cardioIncline = 0;
+S.cardioRouteId = 'r1';
+S.cardioDist = 0;
+S.cardioInterval = null;
+S.cardioMap = null;
+S.cardioMarker = null;
+S.cardioLineDone = null;
+S.cardioLineAll = null;
 
 // ═══════════════════════════════════════════════════════════
 // UTILS
@@ -560,6 +620,7 @@ function goPage(name) {
   document.getElementById('nav-' + name).classList.add('active');
   S.activePage = name;
   if (name === 'treino') initTreino();
+  if (name === 'cardio') initCardio();
   if (name === 'progresso') initProgress();
   if (name === 'alimentacao') renderNutrition();
   if (name === 'receitas') renderRecipes();
@@ -1347,6 +1408,190 @@ async function confirmReset() {
     } catch (e) { }
   }
   location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARDIO
+// ═══════════════════════════════════════════════════════════
+function initCardio() {
+  populateCardioRoutes();
+  renderCardioHistory();
+  if (!S.cardioMap) { initCardioMap(); } else { setTimeout(() => S.cardioMap.invalidateSize(), 100); }
+  updateCardioUI();
+  if (S.cardioActive && S.cardioStartTime) {
+    document.getElementById('cardioStopBtn').style.display = ''; document.getElementById('cardioStartBtn').style.display = 'none';
+    tickCardio();
+  } else {
+    stopCardio();
+  }
+}
+
+function populateCardioRoutes() {
+  const sel = document.getElementById('cardioRoute');
+  sel.innerHTML = '';
+  Object.entries(CARDIO_ROUTES).forEach(([id, r]) => {
+    const o = document.createElement('option'); o.value = id; o.textContent = `${r.name} · ${r.dist}km`;
+    if (id === S.cardioRouteId) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function selectCardioRoute() {
+  S.cardioRouteId = document.getElementById('cardioRoute').value;
+  drawCardioRoute();
+  if (!S.cardioActive) resetCardioStats();
+}
+
+function initCardioMap() {
+  if (S.cardioMap) return;
+  S.cardioMap = L.map('cardioMap', { zoomControl: true, attributionControl: false }).setView([38.774, -9.094], 15);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(S.cardioMap);
+  S.cardioMap.on('resize', () => S.cardioMap.invalidateSize());
+  drawCardioRoute();
+}
+
+function drawCardioRoute() {
+  if (S.cardioLineAll) S.cardioMap.removeLayer(S.cardioLineAll);
+  if (S.cardioLineDone) S.cardioMap.removeLayer(S.cardioLineDone);
+  if (S.cardioMarker) S.cardioMap.removeLayer(S.cardioMarker);
+  const route = CARDIO_ROUTES[S.cardioRouteId];
+  S.cardioLineAll = L.polyline(route.coords, { color: '#4a4a6a', weight: 4, opacity: 0.7 }).addTo(S.cardioMap);
+  S.cardioLineDone = L.polyline([], { color: '#c5f135', weight: 4 }).addTo(S.cardioMap);
+  const start = route.coords[0];
+  S.cardioMarker = L.circleMarker(start, { radius: 7, color: '#c5f135', fillColor: '#c5f135', fillOpacity: 1 }).addTo(S.cardioMap).bindTooltip('🏃', { permanent: true, direction: 'top' });
+  S.cardioMap.fitBounds(S.cardioLineAll.getBounds().pad(0.15));
+  setTimeout(() => S.cardioMap.invalidateSize(), 100);
+}
+
+function updateCardioUI() {
+  document.getElementById('cardioSpeed').value = S.cardioSpeed;
+  document.getElementById('cardioSpeedVal').textContent = S.cardioSpeed.toFixed(1) + ' km/h';
+  document.getElementById('cardioIncline').value = S.cardioIncline;
+  document.getElementById('cardioInclineVal').textContent = S.cardioIncline + '%';
+}
+
+function updateCardioSpeed() {
+  S.cardioSpeed = parseFloat(document.getElementById('cardioSpeed').value);
+  document.getElementById('cardioSpeedVal').textContent = S.cardioSpeed.toFixed(1) + ' km/h';
+  if (S.cardioActive && S.cardioStartTime) {
+    document.getElementById('cardioPace').textContent = paceStr(S.cardioSpeed);
+  }
+}
+
+function updateCardioIncline() {
+  S.cardioIncline = parseInt(document.getElementById('cardioIncline').value);
+  document.getElementById('cardioInclineVal').textContent = S.cardioIncline + '%';
+}
+
+function paceStr(speed) {
+  if (speed <= 0) return '—';
+  const minPerKm = 60 / speed;
+  const m = Math.floor(minPerKm), seg = Math.round((minPerKm - m) * 60);
+  return m + ':' + String(seg).padStart(2, '0') + ' /km';
+}
+
+function startCardio() {
+  if (S.cardioActive) return;
+  S.cardioActive = true;
+  S.cardioStartTime = Date.now();
+  S.cardioDist = 0;
+  document.getElementById('cardioStopBtn').style.display = ''; document.getElementById('cardioStartBtn').style.display = 'none';
+  document.getElementById('cardioStatusTag').textContent = 'Em curso';
+  document.getElementById('cardioStatusTag').className = 'tag tg-lime';
+  S.cardioInterval = setInterval(tickCardio, 200);
+  tickCardio();
+  toast('🏃 Cardio iniciado!');
+  renderCardioHistory();
+}
+
+function tickCardio() {
+  if (!S.cardioActive || !S.cardioStartTime) return;
+  const elapsed = (Date.now() - S.cardioStartTime) / 1000 / 3600;
+  S.cardioDist = S.cardioSpeed * elapsed;
+  const route = CARDIO_ROUTES[S.cardioRouteId];
+  const total = route.dist;
+  const frac = Math.min(S.cardioDist / total, 1);
+
+  const mm = String(Math.floor(elapsed * 60)).padStart(2, '0');
+  const ss = String(Math.round((elapsed * 60 - Math.floor(elapsed * 60)) * 60)).padStart(2, '0');
+  document.getElementById('cardioTime').textContent = mm + ':' + ss;
+  document.getElementById('cardioDist').textContent = S.cardioDist.toFixed(2);
+  document.getElementById('cardioPace').textContent = paceStr(S.cardioSpeed);
+
+  const pos = posOnRoute(route, S.cardioDist);
+  if (pos && S.cardioMarker) {
+    S.cardioMarker.setLatLng([pos.lat, pos.lng]);
+    const coordsSoFar = route.coords.slice(0, pos.segIdx);
+    coordsSoFar.push([pos.lat, pos.lng]);
+    S.cardioLineDone.setLatLngs(coordsSoFar);
+  }
+
+  if (frac >= 1) {
+    completeCardio();
+  }
+}
+
+function completeCardio() {
+  const elapsed = (Date.now() - S.cardioStartTime) / 1000;
+  stopCardio();
+  S.cardioHistory.push({
+    date: todayISO(),
+    duration: Math.round(elapsed),
+    distance: +S.cardioDist.toFixed(2),
+    speed: S.cardioSpeed,
+    incline: S.cardioIncline,
+    route: S.cardioRouteId,
+  });
+  saveState();
+  renderCardioHistory();
+  toast('🎉 Percurso completo!');
+}
+
+function stopCardio() {
+  S.cardioActive = false;
+  S.cardioStartTime = null;
+  if (S.cardioInterval) { clearInterval(S.cardioInterval); S.cardioInterval = null; }
+  document.getElementById('cardioStartBtn').style.display = ''; document.getElementById('cardioStopBtn').style.display = 'none';
+  document.getElementById('cardioStatusTag').textContent = 'Parado';
+  document.getElementById('cardioStatusTag').className = 'tag tg-teal';
+  resetCardioStats();
+}
+
+function resetCardioStats() {
+  document.getElementById('cardioTime').textContent = '00:00';
+  document.getElementById('cardioDist').textContent = '0.00';
+  document.getElementById('cardioPace').textContent = '—';
+  S.cardioDist = 0;
+}
+
+function renderCardioHistory() {
+  const c = document.getElementById('cardioHistory');
+  if (!c) return;
+  if (!S.cardioHistory.length) {
+    c.innerHTML = '<div class="empty"><p>Nenhuma sessão de cardio ainda.<br>Inicia o teu primeiro treino!</p></div>';
+    return;
+  }
+  c.innerHTML = '';
+  const total = S.cardioHistory.length;
+  [...S.cardioHistory].reverse().forEach((h, ri) => {
+    const idx = total - 1 - ri;
+    const r = CARDIO_ROUTES[h.route] || { name: h.route };
+    const mins = Math.floor(h.duration / 60);
+    const secs = h.duration % 60;
+    const el = document.createElement('div'); el.className = 'hist-item';
+    el.innerHTML = `<div><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;">🏃 ${r.name}</div><div style="font-size:.69rem;color:var(--text2);">${fmtDate(h.date)} · ${mins}:${String(secs).padStart(2,'0')}min · ${h.distance}km · ${h.speed}km/h${h.incline ? ' · ⛰' + h.incline + '%' : ''}</div></div><button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;" onclick="delCardioHistory(${idx})">✕</button>`;
+    c.appendChild(el);
+  });
+}
+
+function delCardioHistory(idx) { S.cardioHistory.splice(idx, 1); saveState(); renderCardioHistory(); toast('🗑 Sessão removida'); }
+
+function resetCardioHistory() {
+  if (!confirm('Apagar todo o histórico de cardio?')) return;
+  S.cardioHistory = [];
+  saveState();
+  renderCardioHistory();
+  toast('🗑 Histórico de cardio apagado');
 }
 
 // ═══════════════════════════════════════════════════════════
