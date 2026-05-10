@@ -328,7 +328,7 @@ function defaultState() {
   return {
     sets: {}, swaps: {}, notes: {},
     weights: [], history: [],
-    goals: { cal: 2400, prot: 180, carb: 250, fat: 70, wt: 75, water: 8, height: null },
+    goals: { cal: 2400, prot: 180, carb: 250, fat: 70, wt: 75, water: 10, height: null },
     water: 0, exProgress: {},
     meals: DEFAULT_MEALS(),
     customFoods: [],
@@ -415,6 +415,7 @@ async function loadState(uid) {
           customFoods: d.customFoods || [],
           checkins: d.checkins || [],
         };
+        if (result.goals.water === 8) result.goals.water = 10;
         try { localStorage.setItem(uKey(uid), JSON.stringify(result)); } catch (e) { }
         return result;
       }
@@ -424,7 +425,7 @@ async function loadState(uid) {
     const raw = localStorage.getItem(uKey(uid));
     if (!raw) return def;
     const d = JSON.parse(raw);
-    return {
+    const result = {
       sets: d.sets || {},
       swaps: d.swaps || {},
       notes: d.notes || {},
@@ -437,6 +438,8 @@ async function loadState(uid) {
       customFoods: d.customFoods || [],
       checkins: d.checkins || [],
     };
+    if (result.goals.water === 8) result.goals.water = 10;
+    return result;
   } catch (e) { return def; }
 }
 
@@ -933,7 +936,7 @@ function updateCalRing() {
 }
 
 function renderWater() {
-  const goal = S.goals.water || 8, row = document.getElementById('waterRow');
+  const goal = S.goals.water || 10, row = document.getElementById('waterRow');
   row.innerHTML = '';
   for (let i = 0; i < goal; i++) {
     const c = document.createElement('div'); c.className = 'wc' + (i < S.water ? ' full' : ''); c.textContent = '💧';
@@ -1018,7 +1021,7 @@ function fillGoalInputs() {
   document.getElementById('gCarb').value = g.carb;
   document.getElementById('gFat').value = g.fat;
   document.getElementById('gWt').value = g.wt;
-  document.getElementById('gWater').value = g.water || 8;
+  document.getElementById('gWater').value = g.water || 10;
   if (g.height) document.getElementById('gHeight').value = g.height;
 }
 function saveGoals() {
@@ -1027,7 +1030,7 @@ function saveGoals() {
   S.goals.carb = parseInt(document.getElementById('gCarb').value) || S.goals.carb;
   S.goals.fat = parseInt(document.getElementById('gFat').value) || S.goals.fat;
   S.goals.wt = parseFloat(document.getElementById('gWt').value) || S.goals.wt;
-  S.goals.water = parseInt(document.getElementById('gWater').value) || 8;
+  S.goals.water = parseInt(document.getElementById('gWater').value) || 10;
   S.goals.height = parseInt(document.getElementById('gHeight').value) || S.goals.height;
   closeModal('goalModal'); saveState(); updateCalRing(); renderWater(); toast('🎯 Metas guardadas!');
 }
@@ -1307,7 +1310,7 @@ function openAchievements() {
     { icon: '🔥', name: '10 Treinos', desc: 'Completaste 10 treinos', ok: totalWk >= 10 },
     { icon: '⚡', name: '1 Tonelada', desc: 'Volume acumulado 1000+ kg', ok: totalVol >= 1000 },
     { icon: '🎯', name: 'Meta Atingida', desc: 'Alcançaste o teu peso objetivo', ok: lastW && lastW <= S.goals.wt },
-    { icon: '💧', name: 'Hidratado', desc: 'Bebeste 8+ copos num dia', ok: S.water >= 8 },
+    { icon: '💧', name: 'Hidratado', desc: 'Bebeste 10+ copos num dia', ok: S.water >= 10 },
     { icon: '📊', name: 'Histórico Sólido', desc: '4+ registos de peso', ok: S.weights.length >= 4 },
     { icon: '📸', name: 'Check-in Visual', desc: 'Fizeste o teu 1º check-in de fotos', ok: S.checkins.length >= 1 },
   ];
